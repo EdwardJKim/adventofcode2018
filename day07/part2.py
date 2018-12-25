@@ -47,56 +47,47 @@ steps.
 With 5 workers and the 60+ second step durations described above, how long will
 it take to complete all of the steps?
 """
+import heapq
+from typing import Dict, Set
 from part1 import read_input, find_available, remove_dependency
-from typing import Dict, Set, List
 
 
 def process(
-    deps: Dict[str, Set[str]],
+    dependencies: Dict[str, Set[str]],
     workers: int = 5,
     duration: int = 60
     ) -> int:
 
+    available_jobs = find_available(dependencies)
+    available_workers = list(range(workers))
 
-    q: List[List] = [[] for _ in range(workers)]
+    heap = []
+    processing = set()
+    processed = set()
+    t = 0 
 
-    seconds = 0
+    while available_jobs or heap:
 
-    processing: Set[str] = set()
-    processed = []
+        if available_jobs and available_workers:
+            job = heapq.heappop(available_jobs)
+            end_time = t + duration + 1 + ord(job) - ord('A')
+            worker = available_workers.pop()
+            heapq.heappush(heap, (end_time, job, worker))
+            processing.add(job)
+            continue
 
-    while True:
+        t, completed_job, completed_worker = heapq.heappop(heap)
+        processed.add(completed_job)
+        remove_dependency(completed_job, dependencies)
+        available_workers.append(completed_worker)
+        available_jobs = find_available(dependencies)
+        available_jobs = [x for x in available_jobs if x not in processing]
 
-        for i in range(len(q)):
+    remaining_jobs = [x for x in dependencies if x not in processed]
+    for job in remaining_jobs:
+        t += duration + 1 + ord(job) - ord('A')
 
-            if q[i] and seconds == q[i][-1][1] + 1:
-                job = q[i][-1][0]
-                remove_dependency(job, deps)
-                processed.append(job)
-
-        available = find_available(deps)
-
-        for i in range(len(q)):
-
-            slot_empty = (not q[i]) or (seconds > q[i][-1][1])
-
-            if available and available[-1] not in processing and slot_empty:
-                job = available.pop()
-                end_time = seconds + duration + ord(job) - ord('A')
-                q[i].append((job, end_time))
-                processing.add(job)
-
-        if not find_available(deps):
-            break
-        seconds += 1
-
-    for remaining in deps:
-        if remaining not in processing:
-            seconds += duration + ord(remaining) - ord('A')
-            processed.append(remaining)
-
-    return seconds + 1
-
+    return t
 
 
 def test_process():

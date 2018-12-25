@@ -75,14 +75,15 @@ def read_input(filename: str) -> Dict[str, Set[str]]:
             words = line.split()
             before, after = words[1], words[7]
             deps[after].add(before)
+            if before not in deps:
+                deps[before] = set()
 
     return deps
 
 
 def find_available(deps: Dict[str, Set[str]]):
 
-    values = {x for value in deps.values() for x in value}
-    remaining = [x for x in values if not deps[x]]
+    remaining = {x for value in deps.values() for x in value if not deps[x]}
 
     return sorted(remaining, reverse=True)
 
@@ -114,8 +115,9 @@ def test_read_input():
 
     deps = read_input("test.txt")
 
-    assert deps.keys() == {'A', 'F', 'B', 'D', 'E'}
+    assert deps.keys() == {'A', 'C', 'F', 'B', 'D', 'E'}
     assert deps['A'] == {'C'}
+    assert deps['C'] == set()
     assert deps['F'] == {'C'}
     assert deps['B'] == {'A'}
     assert deps['D'] == {'A'}
